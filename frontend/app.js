@@ -1,6 +1,6 @@
 async function sendMessage() {
     const userInput = document.getElementById("userInput").value;
-    const response = await fetch('https://promptpal.onrender.com/', {  // Replace with Render URL
+    const response = await fetch('http://localhost:8000/chat', {  // Local Docker container URL
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({input_text: userInput})
