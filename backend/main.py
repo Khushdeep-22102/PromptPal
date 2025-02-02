@@ -21,7 +21,7 @@ app.add_middleware(
 )
 
 # Load tokenizer and model on the appropriate device
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cpu")
 
 model = AutoModelForCausalLM.from_pretrained("distilgpt2").to(device)
 tokenizer = AutoTokenizer.from_pretrained("distilgpt2")
@@ -29,7 +29,7 @@ tokenizer = AutoTokenizer.from_pretrained("distilgpt2")
 # Function to handle model inference
 def generate_response(input_text: str):
     inputs = tokenizer.encode(input_text + tokenizer.eos_token, return_tensors='pt').to(device)
-    outputs = model.generate(inputs, max_length=500)
+    outputs = model.generate(inputs, max_length=100)
     return tokenizer.decode(outputs[0], skip_special_tokens=True)
 
 @app.post("/chat")
