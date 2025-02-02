@@ -1,6 +1,6 @@
 async function sendMessage() {
     const userInput = document.getElementById("userInput").value;
-    const response = await fetch('https://your-render-backend-url.onrender.com/chat', {  // Replace with Render URL
+    const response = await fetch('https://promptpal.onrender.com/', {  // Replace with Render URL
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({input_text: userInput})
