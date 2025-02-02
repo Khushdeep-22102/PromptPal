@@ -2,7 +2,7 @@
     "rewrites": [
       {
         "source": "/api/(.*)",
-        "destination": "https://promptpal.onrender.com/"
+        "destination": "http://localhost:8000/chat"
       }
     ]
   }
