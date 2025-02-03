@@ -28,12 +28,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Automatically select device (GPU if available)
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# Use CPU to avoid GPU memory issues
+device = torch.device("cpu")  
 logger.info(f"Using device: {device}")
 
-# Load model and tokenizer
-MODEL_NAME = "gpt2"  # Changed to a smaller model for better memory usage
+# Load a smaller model (distilgpt2)
+MODEL_NAME = "distilgpt2"  # Smaller, more efficient model
 tokenizer, model = None, None
 
 def load_model():
@@ -57,7 +57,7 @@ async def startup_event():
 class ChatRequest(BaseModel):
     input_text: str
 
-# Function to generate response
+# Function to generate response with optimized memory usage
 def generate_response(input_text: str):
     try:
         logger.info(f"Generating response for input: {input_text}")
@@ -65,20 +65,19 @@ def generate_response(input_text: str):
         # Use structured prompt to guide the model
         prompt = f"Question: {input_text}\nAnswer:"
 
-        with torch.no_grad():  # Use no_grad to reduce memory usage
-            inputs = tokenizer.encode(prompt, return_tensors="pt").to(device)
+        # Reduced max_length, offload to CPU, use half precision
+        with torch.no_grad():
+            inputs = tokenizer.encode(prompt, return_tensors="pt", truncation=True, max_length=50).to(device)
 
             outputs = model.generate(
                 inputs,
-                max_length=40,  # Reduced max length for efficiency
-                min_length=20,  # Reduced min length
-                pad_token_id=tokenizer.eos_token_id,
+                max_length=30,  # Further reduced max length for efficiency
+                num_return_sequences=1,
                 do_sample=True,
                 top_k=50,
                 top_p=0.9,
                 temperature=0.7,
                 repetition_penalty=1.2,
-                num_return_sequences=1,
             )
 
             response = tokenizer.decode(outputs[0], skip_special_tokens=True)
@@ -113,11 +112,6 @@ async def chat(request: ChatRequest):
 @app.get("/health")
 def health():
     return {"status": "ok"}
-
-# Simple root endpoint for better detection
-@app.get("/")
-def root():
-    return {"message": "FastAPI is running!"}
 
 # Main entry point for running the app
 if __name__ == "__main__":
