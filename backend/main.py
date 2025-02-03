@@ -1,5 +1,4 @@
 import os
-import asyncio
 import logging
 import torch
 from fastapi import FastAPI
@@ -17,7 +16,7 @@ app = FastAPI()
 
 # CORS settings
 origins = [
-    "https://promptpal-ten.vercel.app"  # Add your Vercel frontend domain here
+    "https://promptpal-ten.vercel.app",  # Add your Vercel frontend domain here
 ]
 
 # Add CORS middleware (for frontend communication)
@@ -29,13 +28,14 @@ app.add_middleware(
 )
 
 # Use CPU to avoid GPU memory issues
-device = torch.device("cpu")  
+device = torch.device("cpu")
 logger.info(f"Using device: {device}")
 
 # Load a smaller model (distilgpt2)
 MODEL_NAME = "distilgpt2"  # Smaller, more efficient model
 tokenizer, model = None, None
 
+# Load model function
 def load_model():
     global tokenizer, model
     try:
@@ -43,6 +43,8 @@ def load_model():
         tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
         model = AutoModelForCausalLM.from_pretrained(MODEL_NAME).to(device)
         model.eval()
+        # Set pad_token to eos_token
+        tokenizer.pad_token = tokenizer.eos_token
         logger.info(f"Successfully loaded model: {MODEL_NAME}")
     except Exception as e:
         logger.error(f"Failed to load model: {str(e)}")
@@ -65,22 +67,24 @@ def generate_response(input_text: str):
         # Use structured prompt to guide the model
         prompt = f"Question: {input_text}\nAnswer:"
 
-        # Reduced max_length, offload to CPU, use half precision
-        with torch.no_grad():
-            inputs = tokenizer.encode(prompt, return_tensors="pt", truncation=True, max_length=50).to(device)
+        # Tokenize input and return tensors with attention_mask
+        inputs = tokenizer.encode(prompt, return_tensors="pt", truncation=True, max_length=50, padding=True).to(device)
 
-            outputs = model.generate(
-                inputs,
-                max_length=30,  # Further reduced max length for efficiency
-                num_return_sequences=1,
-                do_sample=True,
-                top_k=50,
-                top_p=0.9,
-                temperature=0.7,
-                repetition_penalty=1.2,
-            )
+        # Pass the attention_mask and pad_token_id to the generation function
+        outputs = model.generate(
+            inputs,
+            attention_mask=inputs.new_ones(inputs.shape),  # Ensure attention mask is set correctly
+            pad_token_id=tokenizer.eos_token_id,           # Set pad_token_id to eos_token_id for open-ended generation
+            max_length=50,                                 # Further reduced max length for efficiency
+            num_return_sequences=1,
+            do_sample=True,
+            top_k=50,
+            top_p=0.9,
+            temperature=0.7,
+            repetition_penalty=1.2,
+        )
 
-            response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        response = tokenizer.decode(outputs[0], skip_special_tokens=True)
 
         if "Answer:" in response:
             response = response.split("Answer:")[1].strip()
@@ -91,27 +95,17 @@ def generate_response(input_text: str):
         logger.error(f"Error during response generation: {str(e)}")
         return "Sorry, I couldn't process your request."
 
-# Define chat API endpoint
-@app.post("/chat")
-async def chat(request: ChatRequest):
-    try:
-        input_text = request.input_text.strip()
-        if not input_text:
-            return {"error": "Input text cannot be empty."}
-
-        logger.info(f"Received input: {input_text}")
-        response = await asyncio.to_thread(generate_response, input_text)
-        
-        return {"response": response}
-
-    except Exception as e:
-        logger.error(f"Error processing request: {str(e)}")
-        return {"error": "An error occurred while processing your request."}
-
 # Health check endpoint
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+# Chat endpoint to process user input
+@app.post("/chat")
+async def chat(request: ChatRequest):
+    logger.info(f"Received input: {request.input_text}")
+    response = generate_response(request.input_text)
+    return {"response": response}
 
 # Main entry point for running the app
 if __name__ == "__main__":
