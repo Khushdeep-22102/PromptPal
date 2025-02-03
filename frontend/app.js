@@ -1,27 +1,45 @@
 async function sendMessage() {
+    // Get user input from the input field
     const userInput = document.getElementById("userInput").value;
-    
-    // Make sure the user input is not empty before sending the request
+
+    // Ensure the user input is not empty or just spaces before making the request
     if (!userInput.trim()) {
         return;
     }
 
-    const response = await fetch('/api/chat', {  // Endpoint will be rewritten to the backend URL
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ input_text: userInput })
-    });
+    try {
+        // Make a POST request to the backend API endpoint with the user's input
+        const response = await fetch('/api/chat', {  // Replace '/api/chat' with the backend URL if necessary
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ input_text: userInput })
+        });
 
-    const data = await response.json();
+        // Parse the JSON response from the backend
+        const data = await response.json();
 
-    // Display user input and bot response in the chatbox
-    const chatbox = document.getElementById("chatbox");
-    chatbox.innerHTML += `<p><strong>You:</strong> ${userInput}</p>`;
-    chatbox.innerHTML += `<p><strong>Bot:</strong> ${data.response}</p>`;
-    
-    // Clear the input field
-    document.getElementById("userInput").value = '';
+        // Log the response for debugging purposes
+        console.log("Response from backend:", data);
 
-    // Auto-scroll to the bottom of the chatbox to show the latest messages
-    chatbox.scrollTop = chatbox.scrollHeight;
+        // Check if the response contains a valid 'response' field
+        if (data && data.response) {
+            // Get the chatbox element and append the user input and bot response
+            const chatbox = document.getElementById("chatbox");
+            chatbox.innerHTML += `<p><strong>You:</strong> ${userInput}</p>`;
+            chatbox.innerHTML += `<p><strong>Bot:</strong> ${data.response}</p>`;
+            
+            // Clear the input field after sending the message
+            document.getElementById("userInput").value = '';
+
+            // Auto-scroll to the bottom of the chatbox to show the latest messages
+            chatbox.scrollTop = chatbox.scrollHeight;
+        } else {
+            // Log an error if the response format is incorrect
+            console.error("Response format error: 'response' field is missing.");
+        }
+
+    } catch (error) {
+        // Catch and log any errors that occur during the fetch operation
+        console.error("Error during fetch request:", error);
+    }
 }
