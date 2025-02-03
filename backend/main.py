@@ -33,7 +33,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 logger.info(f"Using device: {device}")
 
 # Load model and tokenizer
-MODEL_NAME = "EleutherAI/gpt-neo-125M"
+MODEL_NAME = "gpt2"  # Changed to a smaller model for better memory usage
 tokenizer, model = None, None
 
 def load_model():
@@ -64,18 +64,18 @@ def generate_response(input_text: str):
 
         # Use structured prompt to guide the model
         prompt = f"Question: {input_text}\nAnswer:"
-        
-        with torch.inference_mode():
+
+        with torch.no_grad():  # Use no_grad to reduce memory usage
             inputs = tokenizer.encode(prompt, return_tensors="pt").to(device)
 
             outputs = model.generate(
                 inputs,
-                max_length=80,
-                min_length=40,
+                max_length=40,  # Reduced max length for efficiency
+                min_length=20,  # Reduced min length
                 pad_token_id=tokenizer.eos_token_id,
                 do_sample=True,
-                top_k=50,  
-                top_p=0.9,  
+                top_k=50,
+                top_p=0.9,
                 temperature=0.7,
                 repetition_penalty=1.2,
                 num_return_sequences=1,
