@@ -1,9 +1,9 @@
 async function sendMessage() {
     const userInput = document.getElementById("userInput").value;
-    const response = await fetch('http://localhost:8000/chat', {  // Added /chat here
+    const response = await fetch('/api/chat', {  // Use /api/ endpoint which will be rewritten to Render backend
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ input_text: userInput })  // Ensure this matches the backend parameter
+        body: JSON.stringify({ input_text: userInput })
     });
 
     const data = await response.json();
